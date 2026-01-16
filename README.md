@@ -192,6 +192,8 @@ FROM DOCS_DB.MAIN.SYNTH_DISEASE_NOTES
 LIMIT 100;
 ```
 
+![Running NER Inference from SQL](assets/inference_ner_openmed.gif)
+
 **From Python:**
 ```python
 model = reg.get_model("ner_openmed")
