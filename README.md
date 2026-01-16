@@ -37,6 +37,9 @@ Snowflake owns the SPCS base image (CUDA drivers, Python, PyTorch, transformers,
 - Keep your Terraform/CI/CD focused on declaring models + services, not low-level infra
 
 ### 📦 First-Class Snowflake Integration
+
+![Model Registry & Inference Services](assets/openmed_ner_model_reg.gif)
+
 - **Model Registry**: Built-in versioning, lineage, tags, and metadata
 - **Safe Rollbacks**: Track which model/version is in prod
 - **Multiple Interfaces**: Call from SQL (`SERVICE!FUNCTION`), Python (`mv.run(...)`), or HTTP (ingress endpoint)
@@ -71,7 +74,9 @@ max_batch_rows=64
 | 50,000 | ~1m 45s | ~476 rows/sec |
 | 100,000 | ~3m 54s | ~427 rows/sec |
 
-All 4 GPUs stay busy throughout inference.
+All 4 GPUs stay busy throughout inference:
+
+![GPU Usage](assets/gpu_usage.png)
 
 ---
 
