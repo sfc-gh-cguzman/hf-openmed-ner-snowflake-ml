@@ -73,6 +73,7 @@ max_batch_rows=64
 | 10 | ~1s | Warm-up |
 | 50,000 | ~1m 45s | ~476 rows/sec |
 | 100,000 | ~3m 54s | ~427 rows/sec |
+| 1,000,000 | ~40m 5s | ~416 rows/sec |
 
 All 4 GPUs stay busy throughout inference:
 
@@ -276,6 +277,8 @@ df_out = mv.run(
 
 ## Troubleshooting
 
+You can view logs and metrics directly in the **Snowflake UI** (Snowsight) by navigating to **Monitoring → Service & Jobs → Services → ner_openmed_svc**, or use the SQL commands below:
+
 ### Check Service Status
 ```sql
 SHOW SERVICES IN COMPUTE POOL GPU_ML_M_POOL;
@@ -294,14 +297,6 @@ SELECT * FROM TABLE(
 DESCRIBE COMPUTE POOL GPU_ML_M_POOL;
 ```
 
----
-
-## Next Steps
-
-1. **Compare Performance**: Run the same workload against your existing Flask service
-2. **Tune Parameters**: Adjust `num_workers`, `max_batch_rows`, and `max_instances` based on your latency/throughput requirements
-3. **Add More Models**: Log additional HF pipelines (embeddings, classification, etc.) using the same pattern
-4. **Set Up CI/CD**: Use Terraform or Snowflake CLI to version and deploy model services
 
 ---
 
