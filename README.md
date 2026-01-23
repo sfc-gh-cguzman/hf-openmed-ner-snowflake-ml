@@ -19,6 +19,46 @@ This repository demonstrates how to deploy Hugging Face NER pipelines directly t
 
 ---
 
+## About OpenMed-NER-DiseaseDetect-SuperClinical-434M
+
+The [OpenMed-NER-DiseaseDetect-SuperClinical-434M](https://huggingface.co/OpenMed/OpenMed-NER-DiseaseDetect-SuperClinical-434M) is a state-of-the-art transformer model specifically fine-tuned for **Named Entity Recognition (NER)** of disease mentions in biomedical and clinical text. It is part of the [OpenMed](https://huggingface.co/OpenMed) collection of 380+ open-source medical AI models released under the Apache 2.0 license.
+
+### What It Does
+
+The model identifies and extracts disease entities from unstructured clinical text, research papers, and healthcare documents. It recognizes:
+- `B-DISEASE` — Beginning of a disease entity
+- `I-DISEASE` — Inside/continuation of a disease entity
+
+**Example:**
+> *"Patient presents with type 2 diabetes mellitus and chronic obstructive pulmonary disease."*
+
+The model extracts: `type 2 diabetes mellitus`, `chronic obstructive pulmonary disease`
+
+### Training & Performance
+
+Trained on the **BC5CDR-Disease corpus** (1,500 PubMed abstracts with 5,818 annotated disease entities), it achieves top-tier performance:
+
+| Metric | Score |
+|--------|-------|
+| F1 Score | 0.9118 |
+| Precision | 0.9028 |
+| Recall | 0.9211 |
+| Accuracy | 0.9839 |
+
+### Business Problems It Solves
+
+| Use Case | Description |
+|----------|-------------|
+| **Clinical Decision Support** | Automatically surface relevant diseases from patient notes for clinicians, reducing manual chart review time |
+| **Pharmacovigilance & Adverse Event Detection** | Monitor clinical narratives and social media for disease mentions related to drug safety signals |
+| **Medical Literature Mining** | Extract disease entities from research papers to build knowledge bases or support systematic reviews |
+| **Insurance Claims Processing** | Identify diseases in unstructured claim notes to improve coding accuracy and reduce manual review |
+| **Population Health Analytics** | Aggregate disease mentions across patient populations to identify trends, outbreaks, or care gaps |
+| **Biomedical Knowledge Graphs** | Populate disease nodes in healthcare ontologies and knowledge graphs for downstream AI applications |
+| **Clinical Trial Matching** | Extract disease criteria from eligibility documents and patient records to automate trial matching |
+
+---
+
 ## Architecture
 
 ![Architecture Diagram](assets/architecture.png)
@@ -27,16 +67,16 @@ This repository demonstrates how to deploy Hugging Face NER pipelines directly t
 
 ## Key Benefits
 
-### 🔧 Fully Managed Inference Stack
+### Fully Managed Inference Stack
 Snowflake owns the SPCS base image (CUDA drivers, Python, PyTorch, transformers, etc.) and the inference server. You define the HF pipeline in Python and log it; Snowflake builds the image internally and wires up the service.
 
-### 🚀 Simpler Ops / Less to Maintain
+### Simpler Ops / Less to Maintain
 - No Flask app, no hand-rolled REST server
 - No custom Dockerfile or gunicorn config
 - No service function to keep patched
 - Keep your Terraform/CI/CD focused on declaring models + services, not low-level infra
 
-### 📦 First-Class Snowflake Integration
+### First-Class Snowflake Integration
 
 ![Model Registry & Inference Services](assets/openmed_ner_model_reg.gif)
 
@@ -45,13 +85,13 @@ Snowflake owns the SPCS base image (CUDA drivers, Python, PyTorch, transformers,
 - **Multiple Interfaces**: Call from SQL (`SERVICE!FUNCTION`), Python (`mv.run(...)`), or HTTP (ingress endpoint)
 - **No Custom Auth**: Snowflake handles authentication and routing
 
-### ⚡ Optimized Base Images
+### Optimized Base Images
 - Pre-tuned for GPU inference on SPCS
 - Correct NVIDIA drivers and CUDA toolchain
 - Lean Python environment
 - Only extra pip deps are baked in → predictable cold-start and build times
 
-### 📊 Scaling & Observability
+### Scaling & Observability
 - Scale horizontally with `max_instances`
 - Per-instance concurrency via `num_workers` and `max_batch_rows`
 - Metrics and logs surface through standard SPCS monitoring
