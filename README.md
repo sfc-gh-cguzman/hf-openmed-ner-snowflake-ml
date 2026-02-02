@@ -108,6 +108,8 @@ num_workers=4
 max_batch_rows=64
 ```
 
+### Baseline (Direct Pipeline Logging)
+
 | Rows | Time | Throughput |
 |------|------|------------|
 | 10 | ~1s | Warm-up |
@@ -115,9 +117,107 @@ max_batch_rows=64
 | 100,000 | ~3m 54s | ~427 rows/sec |
 | 1,000,000 | ~40m 5s | ~416 rows/sec |
 
+### Optimized (Custom Model with Batching)
+
+| Rows | Time | Throughput |
+|------|------|------------|
+| 1,000,000 | ~9m 35s | ~1,739 rows/sec |
+
+**4.2x throughput improvement** with the optimized approach.
+
 All 4 GPUs stay busy throughout inference:
 
 ![GPU Usage](assets/gpu_usage.png)
+
+---
+
+## Performance Optimization
+
+When logging a HuggingFace pipeline directly, you may see this warning in the container logs:
+
+```
+You seem to be using the pipelines sequentially on GPU. In order to maximize efficiency please use a dataset
+```
+
+This indicates the pipeline is processing inputs **one at a time**, underutilizing the GPU. Each row triggers a separate inference call with repeated GPU memory transfers.
+
+### The Solution: Custom Model with Batching
+
+Instead of logging the pipeline directly, wrap it in a `CustomModel` class that:
+
+1. **Enables batch processing** — Pass `batch_size` to the pipeline constructor
+2. **Processes all inputs at once** — Convert the DataFrame to a list and pass to the pipeline in one call
+3. **Embeds model artifacts** — Bundle the model weights at log time to avoid runtime downloads
+
+See `scripts/99-log-optimized-model.ipynb` for the full implementation.
+
+### Key Code Changes
+
+```python
+from snowflake.ml.model import custom_model
+from transformers import AutoTokenizer, AutoModelForTokenClassification, pipeline
+
+class BatchedNERModel(custom_model.CustomModel):
+    def __init__(self, context: custom_model.ModelContext) -> None:
+        super().__init__(context)
+        self.pipeline = None
+        self.batch_size = 32  # Process 32 texts per GPU batch
+    
+    @custom_model.inference_api
+    def predict(self, inputs: pd.DataFrame) -> pd.DataFrame:
+        if self.pipeline is None:
+            # Load from embedded artifacts (not HuggingFace Hub)
+            model_dir = self.context.path("model_artifacts")
+            tokenizer = AutoTokenizer.from_pretrained(model_dir)
+            model = AutoModelForTokenClassification.from_pretrained(model_dir)
+            
+            self.pipeline = pipeline(
+                task="token-classification",
+                model=model,
+                tokenizer=tokenizer,
+                aggregation_strategy="simple",
+                device=0,  # GPU
+                batch_size=self.batch_size,
+            )
+        
+        # Pass ALL texts at once — enables GPU batching
+        texts = inputs["inputs"].tolist()
+        results = self.pipeline(texts)
+        return pd.DataFrame({"output": [str(r) for r in results]})
+```
+
+### Why Embed Model Artifacts?
+
+The SPCS container environment may have a different `transformers` version that doesn't recognize newer model architectures. By downloading the model locally and embedding it via `ModelContext(artifacts=...)`, you:
+
+- Avoid runtime downloads from HuggingFace Hub
+- Ensure compatibility regardless of container's transformers version
+- Reduce cold-start time
+
+```python
+# Download and save locally
+tokenizer = AutoTokenizer.from_pretrained(MODEL_NAME)
+model = AutoModelForTokenClassification.from_pretrained(MODEL_NAME)
+tokenizer.save_pretrained("/tmp/model")
+model.save_pretrained("/tmp/model")
+
+# Embed in custom model
+batched_model = BatchedNERModel(
+    context=custom_model.ModelContext(
+        artifacts={"model_artifacts": "/tmp/model"}
+    )
+)
+```
+
+### Tuning `batch_size`
+
+| batch_size | Trade-off |
+|------------|-----------|
+| 8-16 | Conservative, works on smaller GPUs |
+| 32 | Good balance for GPU_NV_M (recommended) |
+| 64+ | Higher throughput but more VRAM; may OOM on long texts |
+
+Adjust based on your GPU memory and average input text length
 
 ---
 
@@ -125,10 +225,11 @@ All 4 GPUs stay busy throughout inference:
 
 ```
 scripts/
-├── 1-setup.sql                    # Database, schema, network rules, compute pool
+├── 1-setup.sql                     # Database, schema, network rules, compute pool
 ├── 2-generate-synthetic-data.ipynb # Generate 500K synthetic clinical notes
-├── 3-log-deploy-model.ipynb       # Log HF pipeline & deploy as SPCS service
-└── 4-performance-testing.sql      # SQL queries for benchmarking
+├── 3-log-deploy-model.ipynb        # Log HF pipeline & deploy as SPCS service
+├── 4-performance-testing.sql       # SQL queries for benchmarking
+└── 99-log-optimized-model.ipynb    # Optimized model with custom batching (4x faster)
 ```
 
 ---
