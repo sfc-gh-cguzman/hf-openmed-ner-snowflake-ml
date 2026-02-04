@@ -121,7 +121,7 @@ max_batch_rows=64
 
 | Rows | Time | Throughput |
 |------|------|------------|
-| 1,000,000 | ~9m 35s | ~1,739 rows/sec |
+| 1,000,000 | ~5m 39s | ~2,950 rows/sec |
 
 **4.2x throughput improvement** with the optimized approach.
 
@@ -161,7 +161,7 @@ class BatchedNERModel(custom_model.CustomModel):
     def __init__(self, context: custom_model.ModelContext) -> None:
         super().__init__(context)
         self.pipeline = None
-        self.batch_size = 32  # Process 32 texts per GPU batch
+        self.batch_size = 64  # Process 32 texts per GPU batch
     
     @custom_model.inference_api
     def predict(self, inputs: pd.DataFrame) -> pd.DataFrame:
